@@ -1,4 +1,6 @@
 import 'dotenv/config'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import cors from 'cors'
 import express from 'express'
 import helmet from 'helmet'
@@ -27,6 +29,11 @@ import { convertRouter } from './routes/convert.js'
 import { compressToolRouter } from './routes/compressTool.js'
 import { securityRouter } from './routes/security.js'
 import { ensureDatabaseSchema } from './db/ensureSchema.js'
+
+const publicDir = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../public',
+)
 
 const app = express()
 
@@ -65,6 +72,17 @@ app.use('/api/calc', calcRouter)
 app.use('/api/convert', convertRouter)
 app.use('/api/compress-tool', compressToolRouter)
 app.use('/api/security', securityRouter)
+
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(publicDir, { index: false, maxAge: '1d' }))
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      next()
+      return
+    }
+    res.sendFile(path.join(publicDir, 'index.html'))
+  })
+}
 
 app.use(errorHandler)
 
