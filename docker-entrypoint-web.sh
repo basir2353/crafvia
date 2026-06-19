@@ -2,7 +2,7 @@
 set -e
 
 PORT="${PORT:-80}"
-API_UPSTREAM="${API_UPSTREAM:-http://api:3001}"
+API_UPSTREAM="${API_UPSTREAM:-http://127.0.0.1:3001}"
 
 sed \
   -e "s|__PORT__|${PORT}|g" \

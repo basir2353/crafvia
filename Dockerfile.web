@@ -17,7 +17,7 @@ RUN chmod +x /docker-entrypoint-web.sh \
   && test -f /usr/share/nginx/html/index.html
 
 ENV PORT=80
-ENV API_UPSTREAM=http://api:3001
+ENV API_UPSTREAM=http://127.0.0.1:3001
 
 EXPOSE 80
 
