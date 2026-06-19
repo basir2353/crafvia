@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Plan {
+  FREE
+  PRO
+}
+
+enum JobStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  TRIALING
+}
+
+model User {
+  id               String         @id @default(cuid())
+  email            String         @unique
+  passwordHash     String
+  name             String?
+  plan             Plan           @default(FREE)
+  stripeCustomerId String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  refreshTokens    RefreshToken[]
+  processingJobs   ProcessingJob[]
+  subscriptions    Subscription[]
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Category {
+  id          String @id @default(cuid())
+  slug        String @unique
+  name        String
+  description String?
+  iconName    String
+  iconBg      String
+  iconColor   String
+  sortOrder   Int    @default(0)
+  tools       Tool[]
+}
+
+model Tool {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  name            String
+  description     String
+  categoryId      String
+  category        Category @relation(fields: [categoryId], references: [id])
+  href            String?
+  keywords        String
+  isActive        Boolean  @default(true)
+  isPopular       Boolean  @default(false)
+  requiresPro     Boolean  @default(false)
+  compressionMode String?
+  accept          String?
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+}
+
+model ProcessingJob {
+  id             String    @id @default(cuid())
+  userId         String?
+  user           User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  toolSlug       String
+  originalSize   Int
+  compressedSize Int?
+  status         JobStatus @default(PENDING)
+  errorMessage   String?
+  createdAt      DateTime  @default(now())
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan                 Plan               @default(PRO)
+  status               SubscriptionStatus @default(ACTIVE)
+  stripeSubscriptionId String?
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+}
+
+model ContentPage {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  title     String
+  body      String
+  updatedAt DateTime @updatedAt
+}
+
+model SiteConfig {
+  key   String @id
+  value String
+}
