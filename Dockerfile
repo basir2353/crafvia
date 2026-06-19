@@ -19,7 +19,7 @@ RUN npm ci
 
 COPY server/tsconfig.json ./
 COPY server/src ./src
-RUN npm run build && npx prisma generate
+RUN npx prisma generate && npm run build
 
 # ── Production image ────────────────────────────────────────────────────────
 FROM node:22-alpine AS runner
