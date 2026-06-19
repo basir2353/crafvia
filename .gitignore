@@ -47,3 +47,4 @@ postgres-data/
 
 # Misc
 *.local
+node_modules
