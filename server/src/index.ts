@@ -75,8 +75,12 @@ app.use('/api/security', securityRouter)
 
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(publicDir, { index: false, maxAge: '1d' }))
-  app.get('*', (req, res, next) => {
+  app.use((req, res, next) => {
     if (req.path.startsWith('/api')) {
+      next()
+      return
+    }
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
       next()
       return
     }
