@@ -28,6 +28,7 @@ import { calcRouter } from './routes/calc.js'
 import { convertRouter } from './routes/convert.js'
 import { compressToolRouter } from './routes/compressTool.js'
 import { securityRouter } from './routes/security.js'
+import { adminRouter } from './routes/admin.js'
 import { ensureDatabaseSchema } from './db/ensureSchema.js'
 
 const publicDir = path.resolve(
@@ -72,6 +73,7 @@ app.use('/api/calc', calcRouter)
 app.use('/api/convert', convertRouter)
 app.use('/api/compress-tool', compressToolRouter)
 app.use('/api/security', securityRouter)
+app.use('/api/admin', adminRouter)
 
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(publicDir, { index: false, maxAge: '1d' }))

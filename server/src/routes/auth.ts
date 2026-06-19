@@ -9,6 +9,7 @@ import {
   signRefreshToken,
   verifyRefreshToken,
 } from '../utils/jwt.js'
+import { syncAdminRole } from '../utils/adminAccess.js'
 import {
   loginSchema,
   refreshSchema,
@@ -22,13 +23,29 @@ function userResponse(user: {
   email: string
   name: string | null
   plan: 'FREE' | 'PRO'
+  role: 'USER' | 'ADMIN'
 }) {
   return {
     id: user.id,
     email: user.email,
     name: user.name,
     plan: user.plan,
+    role: user.role,
   }
+}
+
+function accessTokenFor(user: {
+  id: string
+  email: string
+  plan: 'FREE' | 'PRO'
+  role: 'USER' | 'ADMIN'
+}) {
+  return signAccessToken({
+    sub: user.id,
+    email: user.email,
+    plan: user.plan,
+    role: user.role,
+  })
 }
 
 authRouter.post('/register', authRateLimit, async (req, res, next) => {
@@ -49,6 +66,8 @@ authRouter.post('/register', authRateLimit, async (req, res, next) => {
         name: body.name,
       },
     })
+    const role = await syncAdminRole(user)
+    const authUser = { ...user, role }
 
     const refreshToken = signRefreshToken(user.id)
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
@@ -57,12 +76,8 @@ authRouter.post('/register', authRateLimit, async (req, res, next) => {
     })
 
     res.status(201).json({
-      user: userResponse(user),
-      accessToken: signAccessToken({
-        sub: user.id,
-        email: user.email,
-        plan: user.plan,
-      }),
+      user: userResponse(authUser),
+      accessToken: accessTokenFor(authUser),
       refreshToken,
     })
   } catch (error) {
@@ -80,6 +95,9 @@ authRouter.post('/login', authRateLimit, async (req, res, next) => {
       throw new AppError('Invalid email or password', 401)
     }
 
+    const role = await syncAdminRole(user)
+    const authUser = { ...user, role }
+
     const refreshToken = signRefreshToken(user.id)
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
     await prisma.refreshToken.create({
@@ -87,12 +105,8 @@ authRouter.post('/login', authRateLimit, async (req, res, next) => {
     })
 
     res.json({
-      user: userResponse(user),
-      accessToken: signAccessToken({
-        sub: user.id,
-        email: user.email,
-        plan: user.plan,
-      }),
+      user: userResponse(authUser),
+      accessToken: accessTokenFor(authUser),
       refreshToken,
     })
   } catch (error) {
@@ -118,6 +132,7 @@ authRouter.post('/refresh', async (req, res, next) => {
         sub: stored.user.id,
         email: stored.user.email,
         plan: stored.user.plan,
+        role: stored.user.role,
       }),
     })
   } catch (error) {
@@ -141,7 +156,8 @@ authRouter.get('/me', requireAuth, async (req: AuthRequest, res, next) => {
       where: { id: req.user!.sub },
     })
     if (!user) throw new AppError('User not found', 404)
-    res.json({ user: userResponse(user) })
+    const role = await syncAdminRole(user)
+    res.json({ user: userResponse({ ...user, role }) })
   } catch (error) {
     next(error)
   }

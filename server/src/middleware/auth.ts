@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express'
 import { prisma } from '../db/client.js'
+import { syncAdminRole } from '../utils/adminAccess.js'
 import { verifyAccessToken, type AccessTokenPayload } from '../utils/jwt.js'
 
 export type AuthRequest = Request & {
@@ -46,7 +47,8 @@ export async function requireAuth(
       res.status(401).json({ error: 'User not found' })
       return
     }
-    req.user = { sub: user.id, email: user.email, plan: user.plan }
+    const role = await syncAdminRole(user)
+    req.user = { sub: user.id, email: user.email, plan: user.plan, role }
     next()
   } catch {
     res.status(401).json({ error: 'Invalid or expired token' })

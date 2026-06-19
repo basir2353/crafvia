@@ -1,3 +1,5 @@
+import 'dotenv/config'
+import bcrypt from 'bcryptjs'
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
@@ -379,23 +381,77 @@ const contentPages = [
   {
     slug: 'changelog',
     title: 'Changelog',
-    body: 'v1.0 — Initial release with compression tools, auth, and 170+ tool catalog.',
+    body: 'v1.1 — Admin panel at /admin, site config, tools, content, and user management. v1.0 — Initial release with 180+ tools.',
   },
 ]
 
-async function main() {
-  // Only reset catalog/config data — keep registered users and their sessions.
-  await prisma.processingJob.deleteMany()
-  await prisma.tool.deleteMany()
-  await prisma.category.deleteMany()
-  await prisma.contentPage.deleteMany()
-  await prisma.siteConfig.deleteMany()
+const siteConfigDefaults = [
+  { key: 'donate_url', value: 'https://buymeacoffee.com/crafvia' },
+  { key: 'pro_price_monthly', value: '9' },
+  { key: 'stripe_checkout_url', value: '' },
+  { key: 'support_email', value: 'support@crafvia.com' },
+]
 
+function getAdminEmails(): string[] {
+  return (process.env.ADMIN_EMAILS ?? '')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean)
+}
+
+async function seedAdminUsers() {
+  const adminEmails = getAdminEmails()
+  const seedEmail = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase()
+  const seedPassword = process.env.SEED_ADMIN_PASSWORD?.trim()
+
+  if (seedEmail && seedPassword) {
+    if (seedPassword.length < 8) {
+      throw new Error('SEED_ADMIN_PASSWORD must be at least 8 characters')
+    }
+    const passwordHash = await bcrypt.hash(seedPassword, 12)
+    await prisma.user.upsert({
+      where: { email: seedEmail },
+      create: {
+        email: seedEmail,
+        passwordHash,
+        name: 'Admin',
+        role: 'ADMIN',
+      },
+      update: {
+        role: 'ADMIN',
+        passwordHash,
+      },
+    })
+    console.log(`Admin account ready: ${seedEmail}`)
+  }
+
+  for (const email of adminEmails) {
+    const updated = await prisma.user.updateMany({
+      where: { email },
+      data: { role: 'ADMIN' },
+    })
+    if (updated.count > 0) {
+      console.log(`Promoted existing user to admin: ${email}`)
+    }
+  }
+}
+
+async function main() {
+  // Idempotent seed — safe to re-run on production (keeps users, jobs, sessions).
   let sortOrder = 0
+
   for (const category of categories) {
-    const createdCategory = await prisma.category.create({
-      data: {
+    const createdCategory = await prisma.category.upsert({
+      where: { slug: category.slug },
+      create: {
         slug: category.slug,
+        name: category.name,
+        iconName: category.iconName,
+        iconBg: category.iconBg,
+        iconColor: category.iconColor,
+        sortOrder: category.sortOrder,
+      },
+      update: {
         name: category.name,
         iconName: category.iconName,
         iconBg: category.iconBg,
@@ -406,9 +462,22 @@ async function main() {
 
     for (const tool of category.tools) {
       sortOrder += 1
-      await prisma.tool.create({
-        data: {
+      await prisma.tool.upsert({
+        where: { slug: tool.slug },
+        create: {
           slug: tool.slug,
+          name: tool.name,
+          description: tool.description,
+          categoryId: createdCategory.id,
+          href: tool.href ?? null,
+          keywords: tool.keywords,
+          isPopular: tool.isPopular ?? false,
+          requiresPro: tool.requiresPro ?? false,
+          compressionMode: tool.compressionMode ?? null,
+          accept: tool.accept ?? null,
+          sortOrder,
+        },
+        update: {
           name: tool.name,
           description: tool.description,
           categoryId: createdCategory.id,
@@ -425,20 +494,27 @@ async function main() {
   }
 
   for (const page of contentPages) {
-    await prisma.contentPage.create({ data: page })
+    await prisma.contentPage.upsert({
+      where: { slug: page.slug },
+      create: page,
+      update: {},
+    })
   }
 
-  await prisma.siteConfig.createMany({
-    data: [
-      { key: 'donate_url', value: 'https://buymeacoffee.com/crafvia' },
-      { key: 'pro_price_monthly', value: '9' },
-      { key: 'stripe_checkout_url', value: '' },
-      { key: 'support_email', value: 'support@crafvia.com' },
-    ],
-  })
+  for (const item of siteConfigDefaults) {
+    await prisma.siteConfig.upsert({
+      where: { key: item.key },
+      create: item,
+      update: {},
+    })
+  }
+
+  await seedAdminUsers()
 
   const toolCount = await prisma.tool.count()
+  const adminCount = await prisma.user.count({ where: { role: 'ADMIN' } })
   console.log(`Seeded ${toolCount} tools across ${categories.length} categories`)
+  console.log(`${adminCount} admin user(s) configured`)
 }
 
 main()

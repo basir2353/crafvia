@@ -12,6 +12,11 @@ enum Plan {
   PRO
 }
 
+enum Role {
+  USER
+  ADMIN
+}
+
 enum JobStatus {
   PENDING
   COMPLETED
@@ -31,6 +36,7 @@ model User {
   passwordHash     String
   name             String?
   plan             Plan           @default(FREE)
+  role             Role           @default(USER)
   stripeCustomerId String?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt

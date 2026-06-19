@@ -5,6 +5,7 @@ export type AccessTokenPayload = {
   sub: string
   email: string
   plan: 'FREE' | 'PRO'
+  role: 'USER' | 'ADMIN'
 }
 
 export function signAccessToken(payload: AccessTokenPayload): string {

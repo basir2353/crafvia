@@ -5,6 +5,7 @@ export type User = {
   email: string
   name: string | null
   plan: 'FREE' | 'PRO'
+  role: 'USER' | 'ADMIN'
 }
 
 type AuthResponse = {

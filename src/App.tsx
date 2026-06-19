@@ -211,6 +211,14 @@ import {
 import { ContentPage } from './pages/ContentPage'
 import { HomePage } from './pages/HomePage'
 import { NotFoundPage } from './pages/NotFoundPage'
+import { AdminLayout } from './pages/admin/AdminLayout'
+import { AdminGuard } from './pages/admin/AdminGuard'
+import { AdminDashboardPage } from './pages/admin/AdminDashboardPage'
+import { AdminSiteConfigPage } from './pages/admin/AdminSiteConfigPage'
+import { AdminContentPage } from './pages/admin/AdminContentPage'
+import { AdminToolsPage } from './pages/admin/AdminToolsPage'
+import { AdminCategoriesPage } from './pages/admin/AdminCategoriesPage'
+import { AdminUsersPage } from './pages/admin/AdminUsersPage'
 import './App.css'
 
 function App() {
@@ -406,6 +414,21 @@ function App() {
         <Route path="/tools/ip-lookup" element={<IpLookupPage />} />
         <Route path="/tools/whois-lookup" element={<WhoisLookupPage />} />
         <Route path="/tools/secure-delete" element={<SecureDeletePage />} />
+        <Route
+          path="/admin"
+          element={
+            <AdminGuard>
+              <AdminLayout />
+            </AdminGuard>
+          }
+        >
+          <Route index element={<AdminDashboardPage />} />
+          <Route path="site-config" element={<AdminSiteConfigPage />} />
+          <Route path="content" element={<AdminContentPage />} />
+          <Route path="tools" element={<AdminToolsPage />} />
+          <Route path="categories" element={<AdminCategoriesPage />} />
+          <Route path="users" element={<AdminUsersPage />} />
+        </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>

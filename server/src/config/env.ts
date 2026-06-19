@@ -49,6 +49,7 @@ const envSchema = z.object({
     .transform((value) => value === 'true'),
   OLLAMA_BASE_URL: z.string().default('http://localhost:11434'),
   OLLAMA_MODEL: z.string().default('llama3.2'),
+  ADMIN_EMAILS: z.string().optional().default(''),
 })
 
 export const env = envSchema.parse(process.env)
