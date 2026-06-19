@@ -30,14 +30,14 @@ RUN apk add --no-cache ghostscript
 ENV NODE_ENV=production
 
 COPY server/package.json server/package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+COPY server/prisma ./prisma
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 
 COPY --from=api-builder /app/dist ./dist
 COPY --from=api-builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=api-builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=api-builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=api-builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
-COPY server/prisma ./prisma
 COPY --from=web-builder /app/dist ./public
 
 EXPOSE 3001
