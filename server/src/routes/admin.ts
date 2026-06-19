@@ -8,6 +8,16 @@ import { getAdminDashboard } from '../services/adminService.js'
 
 export const adminRouter = Router()
 
+const routeParamSchema = z.string().min(1)
+
+function routeParam(value: string | string[]): string {
+  const parsed = routeParamSchema.safeParse(Array.isArray(value) ? value[0] : value)
+  if (!parsed.success) {
+    throw new AppError('Invalid route parameter', 400)
+  }
+  return parsed.data
+}
+
 adminRouter.use(requireAdmin)
 
 adminRouter.get('/dashboard', async (_req, res, next) => {
@@ -67,8 +77,9 @@ const contentPageSchema = z.object({
 adminRouter.put('/content-pages/:slug', async (req, res, next) => {
   try {
     const body = contentPageSchema.parse(req.body)
+    const slug = routeParam(req.params.slug)
     const page = await prisma.contentPage.update({
-      where: { slug: req.params.slug },
+      where: { slug },
       data: body,
     })
     res.json({ page })
@@ -101,8 +112,9 @@ const categoryPatchSchema = z.object({
 adminRouter.patch('/categories/:id', async (req, res, next) => {
   try {
     const body = categoryPatchSchema.parse(req.body)
+    const id = routeParam(req.params.id)
     const category = await prisma.category.update({
-      where: { id: req.params.id },
+      where: { id },
       data: body,
       include: { _count: { select: { tools: true } } },
     })
@@ -147,8 +159,9 @@ const toolPatchSchema = z.object({
 adminRouter.patch('/tools/:id', async (req, res, next) => {
   try {
     const body = toolPatchSchema.parse(req.body)
+    const id = routeParam(req.params.id)
     const tool = await prisma.tool.update({
-      where: { id: req.params.id },
+      where: { id },
       data: body,
       include: { category: { select: { slug: true, name: true } } },
     })
@@ -196,11 +209,12 @@ const userPatchSchema = z.object({
 adminRouter.patch('/users/:id', async (req: AuthRequest, res, next) => {
   try {
     const body = userPatchSchema.parse(req.body)
-    if (body.role === 'USER' && req.params.id === req.user?.sub) {
+    const id = routeParam(req.params.id)
+    if (body.role === 'USER' && id === req.user?.sub) {
       throw new AppError('You cannot remove your own admin access', 400)
     }
     const user = await prisma.user.update({
-      where: { id: req.params.id },
+      where: { id },
       data: body,
       select: {
         id: true,
